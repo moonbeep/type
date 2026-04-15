@@ -1,0 +1,202 @@
+import { generateWords, generateWordsWithSpecialChars } from '$lib/utils/markov';
+import { CHALLENGES } from '$lib/constants';
+import type { Screen, ChallengeId, Challenge } from '$lib/types';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function pickWeightedRandom(challenges: Challenge[]): Challenge {
+	const total = challenges.reduce((sum, c) => sum + c.odds, 0);
+	let roll = Math.random() * total;
+	for (const c of challenges) {
+		roll -= c.odds;
+		if (roll <= 0) return c;
+	}
+	return challenges[challenges.length - 1];
+}
+
+// ─── Game Class ───────────────────────────────────────────────────────────────
+
+export class Game {
+	// Level progression
+	level = $state(1);
+	readonly baseWPM = 45;
+	activeChallenge = $state<Challenge | null>(null);
+	wpmBonuses = $state<ChallengeId[]>([]); // accumulates permanently across levels
+
+	// Round state
+	screen = $state<Screen>('waiting-to-start');
+	targetText = $state('');
+	typedText = $state('');
+	timeLeft = $state(30);
+	swapsRemaining = $state(3);
+
+	// Derived stats (reactive, used directly by the renderer)
+	accuracy = $derived.by(() => {
+		if (this.typedText.length === 0) return 100;
+		const correct = [...this.typedText].reduce(
+			(count, c, i) => (c === this.targetText[i] ? count + 1 : count),
+			0
+		);
+		return Math.round((correct / this.typedText.length) * 100);
+	});
+
+	passed = $derived(this.accuracy >= 90 && this.typedText.length === this.targetText.length);
+
+	effectiveWPM = $derived.by(() => {
+		let wpm = this.baseWPM;
+		for (const id of this.wpmBonuses) {
+			if (id === 'wpm5') wpm += 5;
+			if (id === 'wpm10') wpm += 10;
+		}
+		return wpm;
+	});
+
+	timeLimit = $derived(this.activeChallenge?.id === 'timePenalty' ? 25 : 30);
+
+	currentWordIndex = $derived.by(() => [...this.typedText].filter((c) => c === ' ').length);
+
+	// Private
+	#timerId: number | undefined;
+	#keydownHandler = (e: KeyboardEvent) => this.update(e);
+
+	/**
+	 * Begins a level: generates text, resets round state, registers keyboard listener.
+	 * Call this on mount, after retry, and after advancing to the next level.
+	 */
+	start() {
+		clearInterval(this.#timerId);
+		this.#timerId = undefined;
+
+		const count = Math.ceil(this.effectiveWPM / 2);
+		this.targetText = this.hasChallenge('specialChars')
+			? generateWordsWithSpecialChars(count)
+			: generateWords(count);
+
+		this.typedText = '';
+		this.timeLeft = this.timeLimit;
+		this.swapsRemaining = 3;
+		this.screen = 'waiting-to-start';
+
+		// Re-register to avoid duplicate listeners on retry/level-up
+		window.removeEventListener('keydown', this.#keydownHandler);
+		window.addEventListener('keydown', this.#keydownHandler);
+	}
+
+	/**
+	 * Main execution loop — runs once per key-press.
+	 * Handles input, advances screen state, and applies challenge effects.
+	 */
+	update(e: KeyboardEvent) {
+		if (e.key === ' ') e.preventDefault();
+
+		// Challenge screen: Enter advances to the next level
+		if (this.screen === 'next-challenge') {
+			if (e.key === 'Enter') this.nextLevel();
+			return;
+		}
+
+		// Failed round: only Enter to retry
+		if (this.screen === 'retry-level') {
+			if (e.key === 'Enter') this.retry();
+			return;
+		}
+
+		// Filter noise
+		if (e.ctrlKey || e.metaKey || e.altKey) return;
+		if (e.key === 'Tab' || e.key === 'Escape') return;
+
+		if (e.key === 'Backspace') {
+			this.typedText = this.typedText.slice(0, -1);
+			return;
+		}
+
+		if (e.key.length !== 1) return;
+
+		// First real character typed: start the countdown
+		if (this.screen === 'waiting-to-start') {
+			this.screen = 'in-game';
+			this.#timerId = window.setInterval(() => this.tick(), 1000);
+		}
+
+		if (this.typedText.length >= this.targetText.length) return;
+
+		this.typedText += e.key;
+
+		// Apply active challenge effects
+		switch (this.activeChallenge?.id) {
+			case 'wordSwap':
+				// Swap the upcoming word when the player finishes the current one
+				if (e.key === ' ') this.#tryWordSwap();
+				break;
+			// 'shortSighted'  → purely visual, handled by the renderer
+			// 'specialChars'  → text generation, handled in start()
+			// 'timePenalty'   → timeLimit $derived handles this
+			// 'wpm5'/'wpm10'  → effectiveWPM $derived handles this
+		}
+
+		if (this.typedText.length === this.targetText.length) this.finish();
+	}
+
+	/**
+	 * Runs once per second. Counts down the timer and ends the round at zero.
+	 */
+	tick() {
+		this.timeLeft--;
+		if (this.timeLeft <= 0) this.finish();
+	}
+
+	/**
+	 * Called when all words are typed or the timer runs out.
+	 * Decides pass or fail and transitions to the appropriate screen.
+	 */
+	finish() {
+		clearInterval(this.#timerId);
+		this.#timerId = undefined;
+
+		if (this.passed) {
+			// Pick the next challenge using weighted odds and advance
+			const challenge = pickWeightedRandom(CHALLENGES);
+			if (challenge.id === 'wpm5' || challenge.id === 'wpm10') {
+				this.wpmBonuses = [...this.wpmBonuses, challenge.id];
+			}
+			this.activeChallenge = challenge;
+			this.screen = 'next-challenge';
+		} else {
+			this.screen = 'retry-level';
+		}
+	}
+
+	retry() {
+		this.start();
+	}
+
+	nextLevel() {
+		this.level++;
+		this.start();
+	}
+
+	hasChallenge(id: ChallengeId): boolean {
+		return this.activeChallenge?.id === id;
+	}
+
+	/** Clean up timer and keyboard listener (call from onMount cleanup). */
+	destroy() {
+		clearInterval(this.#timerId);
+		window.removeEventListener('keydown', this.#keydownHandler);
+	}
+
+	#tryWordSwap() {
+		if (this.swapsRemaining <= 0) return;
+
+		const nextIdx = this.currentWordIndex + 1;
+		const words = this.targetText.split(' ');
+		if (nextIdx >= words.length) return;
+
+		if (Math.random() < 0.4) {
+			const pool = generateWords(10).split(' ');
+			words[nextIdx] = pool[Math.floor(Math.random() * pool.length)];
+			this.targetText = words.join(' ');
+			this.swapsRemaining--;
+		}
+	}
+}

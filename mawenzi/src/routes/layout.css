@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+
+@theme {
+	/*Dark theme: Default*/
+	--color-content: var(--color-gray-100);
+	--color-subtext: var(--color-gray-500);
+
+	--color-separator: var(--color-gray-800);
+	--color-accent: var(--color-gray-900);
+	--color-danger: var(--color-red-400);
+	--color-backdrop: var(--color-black);
+	--color-success: var(--color-green-400);
+	--color-warning: var(--color-amber-400);
+	--color-cursor: var(--color-emerald-400);
+	--color-muted: var(--color-gray-600);
+	--color-highlight: var(--color-gray-700);
+
+	/*Light theme*/
+	--color-l-content: var(--color-gray-950);
+	--color-l-danger: var(--color-red-400);
+	--color-l-subtext: var(--color-gray-500);
+
+	--color-l-separator: var(--color-violet-800);
+	--color-l-accent: var(--color-violet-200);
+	--color-l-backdrop: var(--color-amber-50);
+	--color-l-success: var(--color-green-600);
+	--color-l-warning: var(--color-amber-600);
+	--color-l-cursor: var(--color-emerald-600);
+	--color-l-muted: var(--color-gray-400);
+	--color-l-highlight: var(--color-gray-200);
+}
+
+@custom-variant light (&:where(.light, .light *));
