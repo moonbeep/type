@@ -7,7 +7,7 @@
 	onclick={() => ThemeManager.toggle()}
 >
 	<div class="grid grid-rows-2 gap-0 text-center">
-		<span class="text-[0.6rem] tracking-widest text-subtext uppercase light:text-l-subtext"
+		<span class="text-[0.7rem] tracking-widest text-content uppercase light:text-l-content"
 			>theme</span
 		>
 		<span class="text-sm font-semibold text-content light:text-l-content"
