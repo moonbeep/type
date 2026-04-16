@@ -43,7 +43,7 @@
 			transition:slide={{ duration: TRANSITION_DURATION, delay: TRANSITION_DURATION * 3 }}
 			onclick={nextLevel}
 		>
-			Press Enter or click to continue
+			Press Space or click to continue
 		</button>
 	</div>
 </div>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
-	import type { Game } from '$lib/utils/game.svelte';
+	import type { Game } from '$lib/components/game.svelte';
 
 	let { game }: { game: Game } = $props();
 
@@ -66,7 +66,7 @@
 						class="animate-pulse cursor-pointer text-subtext light:text-l-subtext"
 						onclick={() => game.retry()}
 					>
-						Press Enter or click to retry
+						Press Space or click to retry
 					</button>
 				</div>
 			{:else if game.screen === 'waiting-to-start'}

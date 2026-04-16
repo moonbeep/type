@@ -7,7 +7,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>Type</title>
+	<title>Mawenzi</title>
 	<meta name="description" content="Roguelike typing game." />
 </svelte:head>
 {@render children()}

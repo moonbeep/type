@@ -2,7 +2,7 @@
 	import ChallengeScreen from '$lib/components/ChallengeScreen.svelte';
 	import GameScreen from '$lib/components/GameScreen.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-	import { Game } from '$lib/utils/game.svelte';
+	import { Game } from '$lib/components/game.svelte';
 	import { ThemeManager } from '$lib/components/Theme.svelte';
 	import { fly } from 'svelte/transition';
 	import { onMount } from 'svelte';

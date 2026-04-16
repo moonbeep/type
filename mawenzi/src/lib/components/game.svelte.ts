@@ -31,6 +31,7 @@ export class Game {
 	swapsRemaining = $state(3);
 
 	// Derived stats (reactive, used directly by the renderer)
+	nextSpaceIndex = $derived(this.targetText.indexOf(' ', this.typedText.length));
 	accuracy = $derived.by(() => {
 		if (this.typedText.length === 0) return 100;
 		const correct = [...this.typedText].reduce(
@@ -89,15 +90,15 @@ export class Game {
 	update(e: KeyboardEvent) {
 		if (e.key === ' ') e.preventDefault();
 
-		// Challenge screen: Enter advances to the next level
+		// Challenge screen: Space advances to the next level
 		if (this.screen === 'next-challenge') {
-			if (e.key === 'Enter') this.nextLevel();
+			if (e.key === ' ') this.nextLevel();
 			return;
 		}
 
-		// Failed round: only Enter to retry
+		// Failed round: only Space to retry
 		if (this.screen === 'retry-level') {
-			if (e.key === 'Enter') this.retry();
+			if (e.key === ' ') this.retry();
 			return;
 		}
 
@@ -120,7 +121,14 @@ export class Game {
 
 		if (this.typedText.length >= this.targetText.length) return;
 
-		this.typedText += e.key;
+		// Capture character and add it to text
+		if (e.key === ' ' && this.nextSpaceIndex !== -1) {
+			const spacesToAdd = this.nextSpaceIndex - this.typedText.length;
+			// Append the required number of spaces
+			this.typedText += ' '.repeat(spacesToAdd + 1);
+		} else {
+			this.typedText += e.key;
+		}
 
 		// Apply active challenge effects
 		switch (this.activeChallenge?.id) {
