@@ -106,8 +106,14 @@ export class Game {
 		if (e.ctrlKey || e.metaKey || e.altKey) return;
 		if (e.key === 'Tab' || e.key === 'Escape') return;
 
+		// Backspace needs to delete all spaces on the right of this.typedText
+		// Backspace puts out e.key.length of 9 so it needs to be handled before we discard all non-characters
 		if (e.key === 'Backspace') {
-			this.typedText = this.typedText.slice(0, -1);
+			if (this.typedText.slice(-1) == ' ') {
+				this.typedText = this.typedText.trimEnd();
+			} else {
+				this.typedText = this.typedText.slice(0, -1);
+			}
 			return;
 		}
 
