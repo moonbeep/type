@@ -5,11 +5,11 @@
 	let {
 		challenge,
 		level,
-		nextLevel
+		proceed
 	}: {
 		challenge: { name: string; description: string };
 		level: number;
-		nextLevel: () => void;
+		proceed: () => void;
 	} = $props();
 </script>
 
@@ -41,7 +41,7 @@
 		<button
 			class="animate-pulse cursor-pointer text-left text-subtext light:text-l-subtext"
 			transition:slide={{ duration: TRANSITION_DURATION, delay: TRANSITION_DURATION * 3 }}
-			onclick={nextLevel}
+			onclick={proceed}
 		>
 			Press Space or click to continue
 		</button>

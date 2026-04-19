@@ -1,4 +1,4 @@
-import type { Challenge } from '$lib/types';
+import type { Challenge, Difficulty } from '$lib/types';
 
 export const BANNER = `
   ███╗   ███╗ █████╗ ██╗    ██╗███████╗███╗   ██╗███████╗██╗    ████████╗██╗   ██╗██████╗ ███████╗
@@ -10,19 +10,14 @@ export const BANNER = `
 `; // Font: ANSI Shadow
 export const TRANSITION_DURATION = 300; // ms
 
+export const WPM_CHALLENGE: Challenge = {
+	id: 'wpm5',
+	name: '+5 WPM',
+	description: 'Target speed increased by 5 words per minute',
+	odds: 0
+};
+
 export const CHALLENGES: Challenge[] = [
-	{
-		id: 'wpm5',
-		name: '+5 WPM',
-		description: 'Target speed increased by 5 words per minute',
-		odds: 4
-	},
-	{
-		id: 'wpm10',
-		name: '+10 WPM',
-		description: 'Target speed increased by 10 words per minute',
-		odds: 2
-	},
 	{
 		id: 'wordSwap',
 		name: 'Word Swap',
@@ -38,6 +33,12 @@ export const CHALLENGES: Challenge[] = [
 		odds: 1
 	},
 	{
+		id: 'screenShift',
+		name: 'Screen Shift',
+		description: 'After each completed word, the typing area shifts to a new on-screen position',
+		odds: 1
+	},
+	{
 		id: 'specialChars',
 		name: 'Special Characters',
 		description: 'Numbers and special characters are mixed into the words this round',
@@ -47,9 +48,18 @@ export const CHALLENGES: Challenge[] = [
 		id: 'timePenalty',
 		name: '-5s',
 		description: 'You only have 25 seconds to complete this round',
-		odds: 2
+		odds: 1
 	}
 ];
+
+export const DIFFICULTY_ORDER: Difficulty[] = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
+
+export const DIFFICULTY_BASE_WPM: Record<Difficulty, number> = {
+	Beginner: 45,
+	Intermediate: 60,
+	Advanced: 75,
+	Expert: 100
+};
 
 export const CORPUS: string[] = [
 	// Nature
@@ -173,6 +183,6 @@ export const CORPUS: string[] = [
 	'every creative constraint whether a fixed form a limited palette or a deadline tends to produce more invention not less',
 	'the novelist knows that the first draft is just a way of finding out what the story is actually about',
 	'an unfinished melody can haunt the listener more persistently than a resolved one because the mind keeps reaching for the note that never comes',
-	'craft is the part of creativity that can be taught and practised and it is the part that makes inspiration useful rather than merely beautiful',
+	'craft is the part of creativity that can be taught and practiced and it is the part that makes inspiration useful rather than merely beautiful',
 	'the stage is one of the few places where failure is immediate and visible and where the audience and performer share the same fragile moment'
 ];

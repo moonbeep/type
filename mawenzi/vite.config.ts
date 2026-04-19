@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	define: {
-		__APP_VERSION__: JSON.stringify('0.1.0'),
+		__APP_VERSION__: JSON.stringify('0.2.0'),
 		__BUILD_TIME__: JSON.stringify(new Date().toISOString())
 	}
 });

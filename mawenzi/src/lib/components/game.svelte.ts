@@ -1,10 +1,12 @@
 import { generateWords, generateWordsWithSpecialChars } from '$lib/utils/markov';
-import { CHALLENGES } from '$lib/constants';
-import type { Screen, ChallengeId, Challenge } from '$lib/types';
+import { getCheckPoint, saveCheckPoint, clearCheckPoint } from '$lib/utils/checkpoint';
+import { CHALLENGES, WPM_CHALLENGE, DIFFICULTY_BASE_WPM, DIFFICULTY_ORDER } from '$lib/constants';
+import type { Screen, ChallengeId, Challenge, Difficulty } from '$lib/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function pickWeightedRandom(challenges: Challenge[]): Challenge {
+function pickOddLevelChallenge(): Challenge {
+	const challenges = CHALLENGES.filter((c) => c.odds > 0);
 	const total = challenges.reduce((sum, c) => sum + c.odds, 0);
 	let roll = Math.random() * total;
 	for (const c of challenges) {
@@ -19,9 +21,10 @@ function pickWeightedRandom(challenges: Challenge[]): Challenge {
 export class Game {
 	// Level progression
 	level = $state(1);
-	readonly baseWPM = 45;
+	difficulty = $state<Difficulty>('Beginner');
+	baseWPM = $derived(DIFFICULTY_BASE_WPM[this.difficulty]);
+
 	activeChallenge = $state<Challenge | null>(null);
-	wpmBonuses = $state<ChallengeId[]>([]); // accumulates permanently across levels
 
 	// Round state
 	screen = $state<Screen>('waiting-to-start');
@@ -29,6 +32,9 @@ export class Game {
 	typedText = $state('');
 	timeLeft = $state(30);
 	swapsRemaining = $state(3);
+	shiftsRemaining = $state(6);
+	shiftX = $state(0);
+	shiftY = $state(0);
 
 	// Derived stats (reactive, used directly by the renderer)
 	nextSpaceIndex = $derived(this.targetText.indexOf(' ', this.typedText.length));
@@ -43,22 +49,26 @@ export class Game {
 
 	passed = $derived(this.accuracy >= 90 && this.typedText.length === this.targetText.length);
 
-	effectiveWPM = $derived.by(() => {
-		let wpm = this.baseWPM;
-		for (const id of this.wpmBonuses) {
-			if (id === 'wpm5') wpm += 5;
-			if (id === 'wpm10') wpm += 10;
-		}
-		return wpm;
-	});
+	effectiveWPM = $derived(this.baseWPM);
 
 	timeLimit = $derived(this.activeChallenge?.id === 'timePenalty' ? 25 : 30);
 
 	currentWordIndex = $derived.by(() => [...this.typedText].filter((c) => c === ' ').length);
+	typedWordCount = $derived.by(() => this.typedText.trim().split(/\s+/).filter(Boolean).length);
 
 	// Private
 	#timerId: number | undefined;
 	#keydownHandler = (e: KeyboardEvent) => this.update(e);
+
+	constructor() {
+		// Get the current level from getCheckPoint and store the result in level and difficulty
+		const checkpoint = getCheckPoint();
+
+		this.level = checkpoint.level;
+		this.difficulty = checkpoint.difficulty;
+		this.activeChallenge = checkpoint.challenge;
+		this.effectiveWPM = this.baseWPM + 5 * Math.floor(this.level / 2);
+	}
 
 	/**
 	 * Begins a level: generates text, resets round state, registers keyboard listener.
@@ -76,6 +86,9 @@ export class Game {
 		this.typedText = '';
 		this.timeLeft = this.timeLimit;
 		this.swapsRemaining = 3;
+		this.shiftsRemaining = 6;
+		this.shiftX = 0;
+		this.shiftY = 0;
 		this.screen = 'waiting-to-start';
 
 		// Re-register to avoid duplicate listeners on retry/level-up
@@ -92,7 +105,7 @@ export class Game {
 
 		// Challenge screen: Space advances to the next level
 		if (this.screen === 'next-challenge') {
-			if (e.key === ' ') this.nextLevel();
+			if (e.key === ' ') this.start();
 			return;
 		}
 
@@ -128,7 +141,7 @@ export class Game {
 		if (this.typedText.length >= this.targetText.length) return;
 
 		// Capture character and add it to text
-		if (e.key === ' ' && this.nextSpaceIndex !== -1) {
+		if (e.key === ' ' && this.nextSpaceIndex !== -1 && this.typedText.slice(-1) !== ' ') {
 			const spacesToAdd = this.nextSpaceIndex - this.typedText.length;
 			// Append the required number of spaces
 			this.typedText += ' '.repeat(spacesToAdd + 1);
@@ -142,10 +155,14 @@ export class Game {
 				// Swap the upcoming word when the player finishes the current one
 				if (e.key === ' ') this.#tryWordSwap();
 				break;
+			case 'screenShift':
+				// Shift the typing area when the player completes a word
+				if (e.key === ' ') this.#tryScreenShift();
+				break;
 			// 'shortSighted'  → purely visual, handled by the renderer
 			// 'specialChars'  → text generation, handled in start()
 			// 'timePenalty'   → timeLimit $derived handles this
-			// 'wpm5'/'wpm10'  → effectiveWPM $derived handles this
+			// 'wpm5'          → applied per-level, no permanent accumulation
 		}
 
 		if (this.typedText.length === this.targetText.length) this.finish();
@@ -168,24 +185,21 @@ export class Game {
 		this.#timerId = undefined;
 
 		if (this.passed) {
-			// Pick the next challenge using weighted odds and advance
-			const challenge = pickWeightedRandom(CHALLENGES);
-			if (challenge.id === 'wpm5' || challenge.id === 'wpm10') {
-				this.wpmBonuses = [...this.wpmBonuses, challenge.id];
+			// Even levels always get wpm5; odd levels get a random challenge (excluding wpm5)
+			this.level++;
+			const challenge = this.level % 2 === 0 ? WPM_CHALLENGE : pickOddLevelChallenge();
+			if (challenge == WPM_CHALLENGE) {
+				this.baseWPM += 5;
 			}
 			this.activeChallenge = challenge;
 			this.screen = 'next-challenge';
+			saveCheckPoint(this.level, this.difficulty, this.activeChallenge.id);
 		} else {
 			this.screen = 'retry-level';
 		}
 	}
 
 	retry() {
-		this.start();
-	}
-
-	nextLevel() {
-		this.level++;
 		this.start();
 	}
 
@@ -197,6 +211,16 @@ export class Game {
 	destroy() {
 		clearInterval(this.#timerId);
 		window.removeEventListener('keydown', this.#keydownHandler);
+	}
+
+	toggleDifficulty() {
+		const idx = DIFFICULTY_ORDER.indexOf(this.difficulty);
+		this.difficulty = DIFFICULTY_ORDER[(idx + 1) % DIFFICULTY_ORDER.length];
+		this.start();
+	}
+
+	resetCheckpoint() {
+		clearCheckPoint();
 	}
 
 	#tryWordSwap() {
@@ -211,6 +235,16 @@ export class Game {
 			words[nextIdx] = pool[Math.floor(Math.random() * pool.length)];
 			this.targetText = words.join(' ');
 			this.swapsRemaining--;
+		}
+	}
+
+	#tryScreenShift() {
+		if (this.shiftsRemaining <= 0) return;
+
+		if (Math.random() < 0.4) {
+			this.shiftX = Math.random() * 240 - 120; // [-120, 120]
+			this.shiftY = Math.random() * 160 - 80; // [-80, 80]
+			this.shiftsRemaining--;
 		}
 	}
 }

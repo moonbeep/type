@@ -2,11 +2,11 @@ export type Screen = 'waiting-to-start' | 'in-game' | 'retry-level' | 'next-chal
 
 export type ChallengeId =
 	| 'wpm5'
-	| 'wpm10'
 	| 'wordSwap'
 	| 'shortSighted'
 	| 'specialChars'
-	| 'timePenalty';
+	| 'timePenalty'
+	| 'screenShift';
 
 export interface Challenge {
 	id: ChallengeId;
@@ -14,3 +14,5 @@ export interface Challenge {
 	description: string;
 	odds: number;
 }
+
+export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
