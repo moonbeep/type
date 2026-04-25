@@ -22,7 +22,6 @@ export class Game {
 	// Level progression
 	level = $state(1);
 	difficulty = $state<Difficulty>('Beginner');
-	baseWPM = $derived(DIFFICULTY_BASE_WPM[this.difficulty]);
 
 	activeChallenge = $state<Challenge | null>(null);
 
@@ -32,7 +31,7 @@ export class Game {
 	typedText = $state('');
 	timeLeft = $state(30);
 	swapsRemaining = $state(3);
-	shiftsRemaining = $state(6);
+	shiftsRemaining = $state(12);
 	shiftX = $state(0);
 	shiftY = $state(0);
 
@@ -49,9 +48,8 @@ export class Game {
 
 	passed = $derived(this.accuracy >= 90 && this.typedText.length === this.targetText.length);
 
-	effectiveWPM = $derived(this.baseWPM);
-
-	timeLimit = $derived(this.activeChallenge?.id === 'timePenalty' ? 25 : 30);
+	baseWPM: number = $derived(DIFFICULTY_BASE_WPM[this.difficulty]);
+	effectiveWPM = $derived(this.baseWPM + 5 * Math.floor(this.level / 2));
 
 	currentWordIndex = $derived.by(() => [...this.typedText].filter((c) => c === ' ').length);
 	typedWordCount = $derived.by(() => this.typedText.trim().split(/\s+/).filter(Boolean).length);
@@ -67,7 +65,6 @@ export class Game {
 		this.level = checkpoint.level;
 		this.difficulty = checkpoint.difficulty;
 		this.activeChallenge = checkpoint.challenge;
-		this.effectiveWPM = this.baseWPM + 5 * Math.floor(this.level / 2);
 	}
 
 	/**
@@ -84,7 +81,7 @@ export class Game {
 			: generateWords(count);
 
 		this.typedText = '';
-		this.timeLeft = this.timeLimit;
+		this.timeLeft = 30;
 		this.swapsRemaining = 3;
 		this.shiftsRemaining = 6;
 		this.shiftX = 0;
@@ -161,7 +158,6 @@ export class Game {
 				break;
 			// 'shortSighted'  → purely visual, handled by the renderer
 			// 'specialChars'  → text generation, handled in start()
-			// 'timePenalty'   → timeLimit $derived handles this
 			// 'wpm5'          → applied per-level, no permanent accumulation
 		}
 
@@ -188,9 +184,6 @@ export class Game {
 			// Even levels always get wpm5; odd levels get a random challenge (excluding wpm5)
 			this.level++;
 			const challenge = this.level % 2 === 0 ? WPM_CHALLENGE : pickOddLevelChallenge();
-			if (challenge == WPM_CHALLENGE) {
-				this.baseWPM += 5;
-			}
 			this.activeChallenge = challenge;
 			this.screen = 'next-challenge';
 			saveCheckPoint(this.level, this.difficulty, this.activeChallenge.id);

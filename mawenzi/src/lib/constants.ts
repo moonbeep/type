@@ -43,12 +43,6 @@ export const CHALLENGES: Challenge[] = [
 		name: 'Special Characters',
 		description: 'Numbers and special characters are mixed into the words this round',
 		odds: 1
-	},
-	{
-		id: 'timePenalty',
-		name: '-5s',
-		description: 'You only have 25 seconds to complete this round',
-		odds: 1
 	}
 ];
 

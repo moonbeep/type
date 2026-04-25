@@ -82,15 +82,15 @@ export function generateWordsWithSpecialChars(count: number): string {
 		let word = current;
 		const roll = Math.random();
 
-		if (roll < 0.05) {
+		if (roll < 0.025) {
 			word = word + pick(numberSuffixes);
-		} else if (roll < 0.1) {
+		} else if (roll < 0.05) {
 			word = word + pick(specialSuffixes);
-		} else if (roll < 0.15) {
+		} else if (roll < 0.1) {
 			word = word + pick(numberSuffixes) + pick(specialSuffixes);
-		} else if (roll < 0.2) {
+		} else if (roll < 0.15) {
 			word = pick(specialPrefixes) + word;
-		} else if (roll < 0.25) {
+		} else if (roll < 0.2) {
 			const other = pick(uniqueWords);
 			word = word + '@' + other;
 		}

@@ -47,7 +47,7 @@
 			>
 				<ChallengeScreen
 					challenge={game!.activeChallenge!}
-					level={game!.level + 1}
+					level={game!.level}
 					proceed={() => game!.start()}
 				/>
 			</div>
@@ -63,7 +63,7 @@
 
 		<!-- Always visible, floats over whichever screen is active -->
 		<div class="absolute right-0 bottom-0 p-4">
-			<Button label="Reset" onclick={reset}><div>Game</div></Button>
+			<Button label="Game" onclick={reset}><div>Reset</div></Button>
 			<!-- Only enabled when starting a game. Disabled afterwards -->
 			<Button
 				label="Difficulty"
